@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>dk.swissarmyronin</groupId>
 	<artifactId>tf2yed</artifactId>
-	<version>1.0</version>
+	<version>1.1-SNAPSHOT</version>
 	<description>Convert Terraform graphs to GML for use with yEd.</description>
 	<properties>
 		<maven.compiler.source>11</maven.compiler.source>
