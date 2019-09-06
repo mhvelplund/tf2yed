@@ -1,0 +1,80 @@
+digraph {
+	compound = "true"
+	newrank = "true"
+	subgraph "root" {
+		"[root] aws_lambda_function.lambda_lookup" [label = "aws_lambda_function.lambda_lookup", shape = "box"]
+		"[root] data.archive_file.lookup_zip" [label = "data.archive_file.lookup_zip", shape = "box"]
+		"[root] data.aws_ecs_container_definition.lookup" [label = "data.aws_ecs_container_definition.lookup", shape = "box"]
+		"[root] data.aws_ecs_service.lookup" [label = "data.aws_ecs_service.lookup", shape = "box"]
+		"[root] data.aws_ecs_task_definition.lookup" [label = "data.aws_ecs_task_definition.lookup", shape = "box"]
+		"[root] data.aws_lambda_invocation.lambda_lookup" [label = "data.aws_lambda_invocation.lambda_lookup", shape = "box"]
+		"[root] null_resource.force_policy_dependency" [label = "null_resource.force_policy_dependency", shape = "box"]
+		"[root] provider.archive" [label = "provider.archive", shape = "diamond"]
+		"[root] provider.aws" [label = "provider.aws", shape = "diamond"]
+		"[root] provider.null" [label = "provider.null", shape = "diamond"]
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] data.archive_file.lookup_zip"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] null_resource.force_policy_dependency"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] provider.aws"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] var.create"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] var.ecs_cluster_id"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] var.ecs_service_name"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] var.lambda_lookup_role_arn"
+		"[root] aws_lambda_function.lambda_lookup" -> "[root] var.tags"
+		"[root] data.archive_file.lookup_zip" -> "[root] provider.archive"
+		"[root] data.aws_ecs_container_definition.lookup" -> "[root] data.aws_ecs_service.lookup"
+		"[root] data.aws_ecs_container_definition.lookup" -> "[root] var.container_name"
+		"[root] data.aws_ecs_service.lookup" -> "[root] provider.aws"
+		"[root] data.aws_ecs_service.lookup" -> "[root] var.create"
+		"[root] data.aws_ecs_service.lookup" -> "[root] var.ecs_cluster_id"
+		"[root] data.aws_ecs_service.lookup" -> "[root] var.ecs_service_name"
+		"[root] data.aws_ecs_service.lookup" -> "[root] var.lookup_type"
+		"[root] data.aws_ecs_task_definition.lookup" -> "[root] data.aws_ecs_service.lookup"
+		"[root] data.aws_lambda_invocation.lambda_lookup" -> "[root] aws_lambda_function.lambda_lookup"
+		"[root] data.aws_lambda_invocation.lambda_lookup" -> "[root] var.container_name"
+		"[root] data.aws_lambda_invocation.lambda_lookup" -> "[root] var.lookup_type"
+		"[root] local.dockerlabels_coalesce" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] local.environment_coalesce" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] local.lambda_lookup" -> "[root] local.safe_lambda_lookup"
+		"[root] local.safe_lambda_lookup" -> "[root] data.aws_lambda_invocation.lambda_lookup"
+		"[root] local.safe_lambda_lookup" -> "[root] local.empty_lookup"
+		"[root] local.test_lookup_type" -> "[root] var.allowed_lookup_types"
+		"[root] local.test_lookup_type" -> "[root] var.lookup_type"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] local.test_lookup_type"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.cpu"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.docker_label_hash"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.environment_json"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.image"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.memory"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.memory_reservation"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.revision"
+		"[root] meta.count-boundary (count boundary fixup)" -> "[root] output.secrets_hash"
+		"[root] null_resource.force_policy_dependency" -> "[root] provider.null"
+		"[root] null_resource.force_policy_dependency" -> "[root] var.lambda_lookup_role_policy_id"
+		"[root] output.cpu" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] output.cpu" -> "[root] local.lambda_lookup"
+		"[root] output.docker_label_hash" -> "[root] local.dockerlabels_coalesce"
+		"[root] output.docker_label_hash" -> "[root] local.lambda_lookup"
+		"[root] output.environment_json" -> "[root] local.environment_coalesce"
+		"[root] output.environment_json" -> "[root] local.lambda_lookup"
+		"[root] output.image" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] output.image" -> "[root] local.lambda_lookup"
+		"[root] output.memory" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] output.memory" -> "[root] local.lambda_lookup"
+		"[root] output.memory_reservation" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] output.memory_reservation" -> "[root] local.lambda_lookup"
+		"[root] output.revision" -> "[root] data.aws_ecs_task_definition.lookup"
+		"[root] output.revision" -> "[root] local.lambda_lookup"
+		"[root] output.secrets_hash" -> "[root] local.dockerlabels_coalesce"
+		"[root] output.secrets_hash" -> "[root] local.lambda_lookup"
+		"[root] provider.archive (close)" -> "[root] data.archive_file.lookup_zip"
+		"[root] provider.aws (close)" -> "[root] data.aws_ecs_container_definition.lookup"
+		"[root] provider.aws (close)" -> "[root] data.aws_ecs_task_definition.lookup"
+		"[root] provider.aws (close)" -> "[root] data.aws_lambda_invocation.lambda_lookup"
+		"[root] provider.null (close)" -> "[root] null_resource.force_policy_dependency"
+		"[root] root" -> "[root] meta.count-boundary (count boundary fixup)"
+		"[root] root" -> "[root] provider.archive (close)"
+		"[root] root" -> "[root] provider.aws (close)"
+		"[root] root" -> "[root] provider.null (close)"
+	}
+}
+
