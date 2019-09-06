@@ -1,28 +1,24 @@
 package dk.swissarmyronin.d2y;
 
+import static com.github.systemdir.gml.YedGmlWriter.PrintLabels.PRINT_VERTEX_LABELS;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.jgrapht.UndirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
 import com.github.systemdir.gml.YedGmlWriter;
-import com.github.systemdir.gml.model.EdgeGraphicDefinition;
-import com.github.systemdir.gml.model.NodeGraphicDefinition;
-import com.github.systemdir.gml.model.NodeGraphicDefinition.Form;
-import com.github.systemdir.gml.model.YedGmlGraphicsProvider;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
-import com.paypal.digraph.parser.GraphEdge;
 import com.paypal.digraph.parser.GraphNode;
 import com.paypal.digraph.parser.GraphParser;
 import com.paypal.digraph.parser.GraphParserException;
@@ -33,81 +29,61 @@ import lombok.extern.slf4j.Slf4j;
 public class Main {
 	public static void main(String[] args) {
 		try {
-			Preconditions.checkArgument(args.length > 0, "No filename provided");
+			Preconditions.checkArgument(args.length > 0, "Syntax: dottoyed input.dot [output.gml]");
 			new Main().run(args);
 		} catch (GraphParserException e) {
 			log.error("Invalid .dot file \"{}\": {}", args[0], e.getCause().getMessage());
 		} catch (Exception e) {
-			log.error(e.getMessage());
+			log.error(e.getMessage(), e);
 		}
 	}
 
-	private void run(String[] args) throws GraphParserException, UnsupportedEncodingException, IOException {
-		String fileName = args[0];
+	private void run(String[] args)
+			throws GraphParserException, UnsupportedEncodingException, IOException {
+		String inputFileName = args[0];
+		String outputFilename = args.length > 1 ? args[1] : null;
 
-		GraphParser parser = new GraphParser(new FileInputStream(fileName));
-		Map<String, GraphNode> nodes = parser.getNodes();
-		Map<String, GraphEdge> edges = parser.getEdges();
+		// Read .dot file
+		GraphParser parser = new GraphParser(new FileInputStream(inputFileName));
 		
-      SimpleGraph<GraphNode, DefaultEdge> graph = new SimpleGraph<GraphNode, DefaultEdge>(DefaultEdge.class);
+		// Convert to intermediate graph
+		UndirectedGraph<GraphNode, DefaultEdge> graph = getGraph(parser);
 
-		for (GraphNode node : nodes.values()) {
-			log.info("NODE: {} {}", node.getId(), node.getAttributes());
-         graph.addVertex(node);
+		filterTerraformElements(graph);
+
+
+		// Output GML
+		OutputStream out;
+		if (outputFilename != null) {
+			out = new FileOutputStream(new File(outputFilename));
+		} else {
+			out = System.out;
 		}
 
-		for (GraphEdge edge : edges.values()) {
-			graph.addEdge(edge.getNode1(), edge.getNode2());
-			log.info("EDGE: {} {}", edge.getId(), edge.getAttributes());
-		}
-		
-		Function<GraphNode, String> vertexLabelProvider = v -> MoreObjects.firstNonNull((String)v.getAttribute("label"), v.getId());
-		
-		YedGmlWriter<GraphNode, DefaultEdge, Object> writer = 
-				new YedGmlWriter.Builder<>(new GraphicsProvider(), YedGmlWriter.PrintLabels.PRINT_VERTEX_LABELS)
-				.setVertexLabelProvider(vertexLabelProvider)
-				.build();
-				
+		YedGmlWriter<GraphNode, DefaultEdge, Object> writer = new YedGmlWriter.Builder<>(new TerraformGraphicsProvider(), PRINT_VERTEX_LABELS)
+						.setVertexLabelProvider(new TerraformVertexLabelProvider())
+						.build();
 
-		// write to file
-		File outputFile = new File(args[0] + ".gml");
-		try (Writer output = new BufferedWriter(
-				new OutputStreamWriter(new FileOutputStream(outputFile), "utf-8"))) {
+		try (Writer output = new BufferedWriter(new OutputStreamWriter(out, "utf-8"))) {
 			writer.export(output, graph);
 		}
 	}
-}
 
-class GraphicsProvider implements YedGmlGraphicsProvider<GraphNode, DefaultEdge, Object> {
-   @Override
-	public NodeGraphicDefinition getVertexGraphics(GraphNode node) {
-		Form form;
-		switch (MoreObjects.firstNonNull((String)node.getAttribute("shape"), "none")) {
-		case "box":
-			form = Form.rectangle;
-			break;
-		case "diamond":
-			form = Form.diamond;
-			break;
-		default:
-			form = Form.ellipse;
-			break;
-		}
-		
-		return new NodeGraphicDefinition.Builder()
-				.setForm(form)
-				.build();
+	private void filterTerraformElements(UndirectedGraph<GraphNode, DefaultEdge> graph) {
+		graph.removeAllVertices(graph
+				.vertexSet().parallelStream().filter(v -> 
+						v.getId().contains("[root] root") || 
+						v.getId().contains("[root] provider") || 
+						v.getId().contains("[root] meta"))
+				.collect(Collectors.toList()));
 	}
 
-   @Override
-   public EdgeGraphicDefinition getEdgeGraphics(DefaultEdge edge, GraphNode edgeSource, GraphNode edgeTarget) {
-       return new EdgeGraphicDefinition.Builder()
-               .setTargetArrow(EdgeGraphicDefinition.ArrowType.SHORT_ARROW)
-               .build();
-   }
+	private SimpleGraph<GraphNode, DefaultEdge> getGraph(GraphParser parser) {
+		SimpleGraph<GraphNode, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
 
-   @Override
-   public NodeGraphicDefinition getGroupGraphics(Object group, Set<GraphNode> groupElements) {
-       throw new RuntimeException("Groups are not supported");
-   }
+		parser.getNodes().values().forEach(node -> graph.addVertex(node));
+		parser.getEdges().values().forEach(edge -> graph.addEdge(edge.getNode1(), edge.getNode2()));
+
+		return graph;
+	}
 }

@@ -8,7 +8,7 @@
 	</appender>
 
 	<category name="dk.swissarmyronin">
-		<level value="trace" />
+		<level value="debug" />
 	</category>
 
 	<root>
