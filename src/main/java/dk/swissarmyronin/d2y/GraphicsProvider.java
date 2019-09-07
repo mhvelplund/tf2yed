@@ -1,17 +1,17 @@
 package dk.swissarmyronin.d2y;
 
+import java.awt.Color;
 import java.util.Set;
-
-import org.jgrapht.graph.DefaultEdge;
 
 import com.github.systemdir.gml.model.EdgeGraphicDefinition;
 import com.github.systemdir.gml.model.NodeGraphicDefinition;
 import com.github.systemdir.gml.model.NodeGraphicDefinition.Form;
+import com.github.systemdir.gml.model.NodeGraphicDefinition.LabelPlacement;
 import com.github.systemdir.gml.model.YedGmlGraphicsProvider;
 import com.google.common.base.MoreObjects;
 import com.paypal.digraph.parser.GraphNode;
 
-public class GraphicsProvider implements YedGmlGraphicsProvider<GraphNode, DefaultEdge, Object> {
+public class GraphicsProvider implements YedGmlGraphicsProvider<GraphNode, EdgeWithAttributes, String> {
 
 	@Override
 	public NodeGraphicDefinition getVertexGraphics(GraphNode node) {
@@ -32,15 +32,17 @@ public class GraphicsProvider implements YedGmlGraphicsProvider<GraphNode, Defau
 	}
 
 	@Override
-	public EdgeGraphicDefinition getEdgeGraphics(DefaultEdge edge, GraphNode edgeSource,
+	public EdgeGraphicDefinition getEdgeGraphics(EdgeWithAttributes edge, GraphNode edgeSource,
 			GraphNode edgeTarget) {
 		return new EdgeGraphicDefinition.Builder()
 				.setTargetArrow(EdgeGraphicDefinition.ArrowType.SHORT_ARROW).build();
 	}
 
 	@Override
-	public NodeGraphicDefinition getGroupGraphics(Object group, Set<GraphNode> groupElements) {
-		throw new RuntimeException("Groups are not supported");
+	public NodeGraphicDefinition getGroupGraphics(String group, Set<GraphNode> groupElements) {
+		NodeGraphicDefinition.Builder builder = new NodeGraphicDefinition.Builder().setLabelColour(Color.BLACK);
+		builder.setLabelPlacement(LabelPlacement.south);
+		return builder.build();
 	}
 
 }
