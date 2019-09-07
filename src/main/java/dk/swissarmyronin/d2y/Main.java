@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.jgrapht.UndirectedGraph;
@@ -73,10 +74,8 @@ public class Main {
 			String[] labelParts = label.split("\\.");
 			if ("module".equals(labelParts[0])) {
 				String module = labelParts[1];
-				label = Arrays.asList(labelParts).subList(2, labelParts.length).stream()
-						.collect(Collectors.joining("."));
-				Set<GraphNode> group = MoreObjects.firstNonNull(groupMapping.get(module),
-						new HashSet<>());
+				label = Arrays.asList(labelParts).subList(2, labelParts.length).stream().collect(Collectors.joining("."));
+				Set<GraphNode> group = MoreObjects.firstNonNull(groupMapping.get(module), new HashSet<>());
 				group.add(v);
 				groupMapping.put(module, group);
 				v.setAttribute("label", label);
@@ -85,8 +84,7 @@ public class Main {
 		return groupMapping;
 	}
 
-	private void run(String[] args)
-			throws GraphParserException, UnsupportedEncodingException, IOException {
+	private void run(String[] args) throws GraphParserException, UnsupportedEncodingException, IOException {
 		String inputFileName = args[0];
 		String outputFilename = args.length > 1 ? args[1] : null;
 
@@ -101,6 +99,35 @@ public class Main {
 
 		val vertexLabelProvider = new TerraformVertexLabelProvider();
 		Map<String, Set<GraphNode>> groupMapping = groupModuleElements(graph, vertexLabelProvider);
+		
+		groupMapping.values().forEach(s -> {
+			s.forEach(g -> {
+				String label = vertexLabelProvider.apply(g);
+				String[] labelParts = label.split("\\.");
+				if ("var".equals(labelParts[0])) {
+					String edgeLabel = labelParts[1];
+					Set<EdgeWithAttributes> edgesOf = graph.edgesOf(g);
+					
+					Set<GraphNode> sources = edgesOf.parallelStream()
+							.filter((Predicate<EdgeWithAttributes>) e -> e.getTarget().equals(g))
+							.map(e -> e.getSource())
+							.collect(Collectors.toSet());
+					
+					Set<GraphNode> targets = edgesOf.parallelStream()
+							.filter((Predicate<EdgeWithAttributes>) e -> e.getSource().equals(g))
+							.map(e -> e.getTarget())
+							.collect(Collectors.toSet());
+					
+					sources.forEach(src -> {
+						targets.forEach(dst -> {
+							graph.addEdge(src, dst, new EdgeWithAttributes(edgeLabel));
+						});
+					});
+					
+					graph.removeVertex(g);
+				}
+			});
+		});
 
 		// Output GML
 		OutputStream out;
