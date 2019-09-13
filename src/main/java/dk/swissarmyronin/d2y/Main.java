@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Main {
+	private TerraformVertexLabelProvider vertexLabelProvider = new TerraformVertexLabelProvider();
+
 	public static void main(String[] args) {
 		try {
 			Preconditions.checkArgument(args.length > 0, "Syntax: dottoyed input.dot [output.gml]");
@@ -56,14 +59,22 @@ public class Main {
 	private SimpleGraph<GraphNode, EdgeWithAttributes> getGraph(GraphParser parser) {
 		SimpleGraph<GraphNode, EdgeWithAttributes> graph = new SimpleGraph<>(
 				EdgeWithAttributes.class);
+		
+		val c = new Consumer<GraphNode>() {			
+			@Override
+			public void accept(GraphNode n) {
+				String type = vertexLabelProvider.apply(n).split("\\.")[0];
+				n.setAttribute("type", type);
+				graph.addVertex(n);
+			}
+		};
 
-		parser.getNodes().values().forEach(node -> graph.addVertex(node));
-		parser.getEdges().values().forEach(
-				edge -> graph.addEdge(edge.getNode1(), edge.getNode2(), new EdgeWithAttributes(edge)));
+		parser.getNodes().values().forEach(c::accept);
+		parser.getEdges().values().forEach(e -> graph.addEdge(e.getNode1(), e.getNode2(), new EdgeWithAttributes(e)));
 
 		return graph;
 	}
-
+	
 	/** Group elements in modules. */
 	private Map<String, Set<GraphNode>> groupModuleElements(
 			UndirectedGraph<GraphNode, EdgeWithAttributes> graph,
@@ -97,34 +108,34 @@ public class Main {
 		// Remove Terraform noise
 		filterBoringElements(graph);
 
-		val vertexLabelProvider = new TerraformVertexLabelProvider();
 		Map<String, Set<GraphNode>> groupMapping = groupModuleElements(graph, vertexLabelProvider);
 		
 		groupMapping.values().forEach(s -> {
 			s.forEach(g -> {
 				String label = vertexLabelProvider.apply(g);
 				String[] labelParts = label.split("\\.");
-				if ("var".equals(labelParts[0])) {
-					String edgeLabel = labelParts[1];
-					Set<EdgeWithAttributes> edgesOf = graph.edgesOf(g);
-					
-					Set<GraphNode> sources = edgesOf.parallelStream()
-							.filter((Predicate<EdgeWithAttributes>) e -> e.getTarget().equals(g))
-							.map(e -> e.getSource())
-							.collect(Collectors.toSet());
-					
-					Set<GraphNode> targets = edgesOf.parallelStream()
-							.filter((Predicate<EdgeWithAttributes>) e -> e.getSource().equals(g))
-							.map(e -> e.getTarget())
-							.collect(Collectors.toSet());
-					
+				String nodeType = labelParts[0];
+				String nodeLabel = labelParts[1];
+
+				Set<EdgeWithAttributes> edgesOf = graph.edgesOf(g);
+				
+				Set<GraphNode> sources = edgesOf.parallelStream()
+						.filter((Predicate<EdgeWithAttributes>) e -> e.getTarget().equals(g))
+						.map(e -> e.getSource())
+						.collect(Collectors.toSet());
+				
+				Set<GraphNode> targets = edgesOf.parallelStream()
+						.filter((Predicate<EdgeWithAttributes>) e -> e.getSource().equals(g))
+						.map(e -> e.getTarget())
+						.collect(Collectors.toSet());
+
+				if ("var".equals(nodeType) || "output".equals(nodeType)) {
 					sources.forEach(src -> {
 						targets.forEach(dst -> {
-							graph.addEdge(src, dst, new EdgeWithAttributes(edgeLabel));
+							graph.addEdge(src, dst, new EdgeWithAttributes(nodeLabel));
 						});
 					});
-					
-					graph.removeVertex(g);
+					graph.removeVertex(g); // This will also remove unused vars and outputs
 				}
 			});
 		});
